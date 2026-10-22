@@ -153,7 +153,8 @@ def cutaway(on):
 
 
 # ---------------------------------------------------------------- animated prims, restored before every shot
-ANIM = ["/World/Drones/Inspection", "/World/Drones/Contact", "/World/Drones/Cargo", "/World/T07/Robots/AnymalHoist"]
+ANIM = ["/World/Drones/Inspection", "/World/Drones/Contact", "/World/Drones/Cargo", "/World/T07/Robots/AnymalHoist",
+        "/World/T07/Equipment/NacelleCrane/HookBlock"]
 HOME = {p: FK.world(stage.GetPrimAtPath(p)) for p in ANIM}
 LINE = UsdGeom.Cylinder(stage.GetPrimAtPath("/World/T07/HoistLine"))
 LINE_TOP = 80.1 + 114.2 / 2                                     # crane end of the hoist line (as authored)
@@ -179,15 +180,17 @@ def bbox(path):
 HOIST_TOP0 = bbox("/World/T07/Robots/AnymalHoist").GetMax()[2] - HOME["/World/T07/Robots/AnymalHoist"][2, 3]
 
 
-def hoist_to(z_root):
-    """Hoisted ANYmal with its root at height z_root; the hoist line runs from its top to the crane."""
+def hoist_to(z_root, shift=(0.0, 0.0), line_top=LINE_TOP):
+    """Hoisted ANYmal with its root at height z_root (shifted in plan by `shift`); the hoist line runs from its top
+    up to line_top (the crane hook)."""
     p = "/World/T07/Robots/AnymalHoist"
     M = HOME[p].copy()
     M[2, 3] = z_root
+    M[:2, 3] += shift
     move(p, M)
     bottom = z_root + HOIST_TOP0
-    LINE.GetHeightAttr().Set(float(LINE_TOP - bottom))
-    LINE_OP.Set((LINE_XY[0], LINE_XY[1], float((LINE_TOP + bottom) / 2)))
+    LINE.GetHeightAttr().Set(float(line_top - bottom))
+    LINE_OP.Set((LINE_XY[0], LINE_XY[1], float((line_top + bottom) / 2)))
 
 
 def reset():
@@ -260,12 +263,79 @@ def shot_hoist_lift(t):
     return eye, np.r_[LINE_XY, z + 0.6], 24
 
 
+def robot_extent(path="/World/T07/Robots/AnymalHoist"):
+    """min/max of the hoisted robot's mesh points in the nacelle frame (instance proxies included)."""
+    Mi, xc, pts = np.linalg.inv(Mn), UsdGeom.XformCache(), []
+    for q in Usd.PrimRange(stage.GetPrimAtPath(path), Usd.TraverseInstanceProxies()):
+        if q.IsA(UsdGeom.Mesh) and UsdGeom.Imageable(q).ComputeVisibility() != "invisible":
+            P = np.array(UsdGeom.Mesh(q).GetPointsAttr().Get() or [], float)
+            if len(P):
+                W = np.array(xc.GetLocalToWorldTransform(q)).T
+                pts.append((Mi @ W @ np.c_[P, np.ones(len(P))].T).T[:, :3])
+    pts = np.concatenate(pts)
+    return pts.min(0), pts.max(0)
+
+
+HOOK = "/World/T07/Equipment/NacelleCrane/HookBlock"
+HOOK_HOME = FK.world(stage.GetPrimAtPath(HOOK))
+HOOK_SEAT0 = bbox(HOOK).GetMin()[2] + 0.02                       # hook seat: the sling attaches here
+DECK_TOP = TOP + 3.32                                           # lower deck / coaming top (nacelle_hf DECK_Z + 0.12)
+LIFT = {}
+
+
+def hatch_lift():
+    """Open the hatch (film/hatch_cut.py) and derive the lift: robot centred in the 1.4 x 0.9 m opening, raised
+    until its lowest point clears the deck by 0.15 m; the crane hook rises with it (sling >= 0.15 m)."""
+    import hatch_cut
+    reset()
+    lo, hi = robot_extent()                                     # nacelle frame, robot at home on the TP
+    print("[anim] hatch opened:", hatch_cut.open_hatch(stage, Mn, FK), flush=True)
+    x0, x1, y0, y1 = hatch_cut.OPEN
+    d = np.array([(x0 + x1) / 2 - (lo[0] + hi[0]) / 2, (y0 + y1) / 2 - (lo[1] + hi[1]) / 2, 0.0])
+    margin = min(x1 - x0 - (hi[0] - lo[0]), y1 - y0 - (hi[1] - lo[1])) / 2
+    assert margin > 0.05, f"robot does not fit the hatch opening (margin {margin:.3f} m)"
+    z0 = HOME["/World/T07/Robots/AnymalHoist"][2, 3]
+    off_b = lo[2] + TOP - z0                                    # lowest robot point relative to its root
+    LIFT.update(shift=(Mn[:3, :3] @ d)[:2], z_end=DECK_TOP + 0.15 - off_b, height=hi[2] - lo[2], margin=margin)
+    print(f"[anim] hatch lift: plan shift {d[:2].round(3)} m, side margin {margin:.3f} m, root z end "
+          f"{LIFT['z_end']:.3f}, robot height {LIFT['height']:.2f} m", flush=True)
+
+
+def hook_at(seat):
+    M = HOOK_HOME.copy()
+    M[2, 3] += seat - HOOK_SEAT0
+    move(HOOK, M)
+
+
 def shot_hoist_hatch(t):
-    z = lerp(112.0, 137.25, ease(t))
-    hoist_to(float(z))
+    if not LIFT:
+        hatch_lift()
+    z = float(lerp(112.0, LIFT["z_end"], ease(t)))
+    seat = max(HOOK_SEAT0, z + HOIST_TOP0 + 0.15)
+    hook_at(seat)
+    hoist_to(z, LIFT["shift"], seat)
     xy = np.array(LINE_XY) + U * 15.0 + V * 6.0
     eye = np.r_[xy, 116.0]
     return eye, np.r_[LINE_XY, lerp(115.0, 133.5, ease(t))], 22
+
+
+def shot_hatch_check(t):
+    """QC only (not in the film): the opening from below (t<0.5) and from above inside the cutaway nacelle."""
+    shot_hoist_hatch(0.0)
+    z = float(lerp(LIFT["z_end"] - 1.2, LIFT["z_end"], t))
+    seat = max(HOOK_SEAT0, z + HOIST_TOP0 + 0.15)
+    hook_at(seat)
+    hoist_to(z, LIFT["shift"], seat)
+    lo, hi = robot_extent()
+    print(f"[anim] hatch_check t={t:.2f}: robot (nacelle) {lo.round(3)} .. {hi.round(3)}, hook seat {seat:.3f}", flush=True)
+    c = nac((-8.02, -1.88, 3.2))
+    if t > 0.75:
+        cutaway(True)
+        return c + np.array([0.3, 0.4, 4.5]), c, 18
+    if t < 0.5:
+        return c + np.array([2.5, 2.0, -6.0]), c, 18
+    cutaway(True)
+    return c + np.array([4.5, 5.5, 5.0]), c + np.array([0, 0, 0.3]), 18
 
 
 def shot_nacelle_robots(t):
@@ -304,6 +374,7 @@ SHOTS = {  # name: (seconds, frame function, cutaway)
     "hoist_hatch": (6.0, shot_hoist_hatch),
     "nacelle_robots": (8.0, shot_nacelle_robots),
     "cargo_drone": (6.0, shot_cargo_drone),
+    "hatch_check": (0.125, shot_hatch_check),
 }
 
 cam = RL.Camera(stage, RES, SUB, path="/World/RenderOnly/Cam", far=60000.0)
@@ -313,7 +384,7 @@ T_OFF = {name: 20.0 * k for k, name in enumerate(["approach", "drone_blade", "co
 times = []
 try:
     for name, (seconds, fn) in SHOTS.items():
-        if ONLY and name not in ONLY:
+        if (ONLY and name not in ONLY) or (not ONLY and name == "hatch_check"):
             continue
         reset()
         n = int(round(seconds * FPS))
