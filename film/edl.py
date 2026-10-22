@@ -7,6 +7,7 @@ Captions quote the Cuxhaven register via titles.value() and show its status labe
 
 from __future__ import annotations
 
+import json
 import os
 
 import imageio_ffmpeg
@@ -26,6 +27,45 @@ def P(sid, a, b, **kw):
                 grade=kw.pop("grade", INTERIOR), **kw)
 
 
+# grades for the film's own hall renders (brighter than the twin's clips): softer versions of the clip grades
+HALL_GRADE = {INTERIOR: "eq=contrast=1.06:saturation=1.12",
+              GREY_ON_GREY: "eq=contrast=1.12:saturation=1.18:gamma=1.04"}
+
+
+def HALL(sid, a, b, trim=None, **kw):
+    """A hall shot re-rendered for the film (film/render_hall_clips.py: at most two varied, animated workers,
+    occasional vehicles on collision-checked paths, realistic materials, post effects), 24 fps frames in
+    build/hall_post/<sid>_<a>_<b>/ with a margin before `a` (meta.json); falls back to the twin's clip.
+    trim=(t0, t1): play only clip seconds t0..t1 of the rendered frames (within a - margin .. b + margin; no
+    re-render, a and b stay the frame-directory key)."""
+    t0, t1 = trim or (a, b)
+    d = os.path.join(ROOT, "build", "hall_post", f"{sid}_{a}_{b}")
+    meta = os.path.join(d, "meta.json")
+    if not os.path.exists(meta):
+        return P(sid, t0, t1, **kw)
+    meta = json.load(open(meta))
+    m = meta["margin_s"]
+    first, last = a - m, meta.get("out_s", b) + (meta.get("margin_s", 1.0))
+    assert first - 1e-6 <= t0 < t1 <= last + 1e-6, (sid, a, b, trim, "outside the rendered frames")
+    grade = kw.pop("grade", INTERIOR)
+    # the twin's time-lapse spans (clip seconds; real time = factor x video time) shifted into this sequence;
+    # only spans overlapping the played range (assemble.py further drops overlaps under 0.8 s)
+    tl = [(round(s["factor"]), m + s["t0"] - a, m + s["t1"] - a) for s in meta.get("time_lapse", ())
+          if s["t1"] > t0 and s["t0"] < t1]
+    return dict(name=f"{sid} {t0:g}-{t1:g} film", seq=d, src_fps=24, **{"in": m + t0 - a, "out": m + t1 - a},
+                grade=HALL_GRADE.get(grade, grade), timelapse=tl, **kw)
+
+
+SHIP_GRADE = "eq=contrast=1.03:saturation=1.05"   # the realism pass already sets tone and saturation
+
+
+def SHIP(seq, a, b, **kw):
+    """A ship shot from build/ships/<seq> (24 fps, film-side realistic named vessels; in/out relative to the
+    sequence start)."""
+    return dict(name=f"{seq} {a}-{b}", seq=os.path.join(ROOT, "build", "ships", seq), src_fps=24,
+                **{"in": a, "out": b}, grade=kw.pop("grade", SHIP_GRADE), **kw)
+
+
 def E(name, a, b, **kw):
     """A physics-episode segment from its clean frames."""
     d = f"{TWIN}/renders/episodes/{name}"
@@ -36,8 +76,11 @@ def E(name, a, b, **kw):
 
 
 def S(path, dur, zoom=(1.0, 1.1), pan=((0.5, 0.5), (0.5, 0.5)), **kw):
-    """A still with a slow camera move."""
-    return dict(name=os.path.basename(path), still=f"{TWIN}/renders/{path}", dur=dur, zoom=zoom, pan=pan, **kw)
+    """A still with a slow camera move; a film-side re-render in build/stills/ (film/render_site_stills.py: new sea)
+    replaces the twin's still of the same name."""
+    own = os.path.join(ROOT, "build", "stills", os.path.basename(path))
+    src = own if os.path.exists(own) else f"{TWIN}/renders/{path}"
+    return dict(name=os.path.basename(path), still=src, dur=dur, zoom=zoom, pan=pan, **kw)
 
 
 def SVC(shot, fallback, **kw):
@@ -70,36 +113,39 @@ def shots():
           fact=(f"About {value('output_per_day')} nacelle per working day", ("output_per_day",), "IFR case study"),
           fact_at=1.2),
         # ---------------------------------------------------------------- 2 generator
-        P("G2", 12, 24, chapter=("02", "The generator", "A direct-drive generator, built in five stations"),
+        # hall windows: film/hall/windows_next.json (staged twin choreography, 2026-10-21)
+        HALL("G2", 6, 18, trim=(10, 18), chapter=("02", "The generator", "A direct-drive generator, built in five stations"),
           fact=(f"{value('magnet_robots')} robots insert the permanent magnets", ("magnet_robots",), "inauguration"),
-          fact_at=6.0, pulse=True),
+          fact_at=2.0, pulse=True),
         S("product/rotor_g2_magnets.png", 4.5, (1.0, 1.15), ((0.5, 0.5), (0.5, 0.45)), pulse=True),
-        P("G3", 24, 40, speed=1.6, pulse=True),
-        P("G3", 48, 56, pulse=True),
-        P("G4", 39, 47, pulse=True),
-        P("G5", 15, 27, pulse=True,
+        HALL("G2", 38, 50, speed=1.5, pulse=True),     # AGV run-out of the magnet portal, then the 250 t lift
+        HALL("G3", 42, 58, speed=1.6, pulse=True),
+        HALL("G3", 90, 98, trim=(92, 97), pulse=True),
+        HALL("G4", 42, 50, pulse=True),
+        HALL("G5", 79, 91, trim=(79, 84.5), pulse=True,
           fact=(f"Generator ≈ {value('generator_mass')} t", ("generator_mass",), "scaled from IEA 15 MW"), fact_at=3.0),
         E("station_g5", 4, 22, speed=1.8, pulse=True,
           fact=("Physics episode: stator lowered into the magnetised rotor", (), "Isaac Sim physics"), fact_at=0.8),
         # ---------------------------------------------------------------- 3 backend
-        P("B7", 0, 9, chapter=("03", "The backend", "Bedframe, yaw system, power and cooling"), pulse=True),
-        P("B2", 60, 72, pulse=True,
+        HALL("B7", 0, 9, trim=(0, 7.5), chapter=("03", "The backend", "Bedframe, yaw system, power and cooling"), pulse=True),
+        HALL("B2", 30, 42, pulse=True,
           fact=(f"{value('cranes_count')} overhead cranes, {cmin}–{cmax} t", ("cranes_count", "crane_capacity_range"),
                 "Konecranes"), fact_at=1.5),
         E("station_b2", 0, 14, pulse=True),
-        P("B4", 39, 48, pulse=True),
-        P("B5", 48, 56, pulse=True),
+        HALL("B4", 43, 52, pulse=True),
+        HALL("B5", 53, 61, pulse=True),
         # ---------------------------------------------------------------- 4 hub
-        P("H2", 36, 44, chapter=("04", "The hub", "Pitch bearings on a 100-tonne casting"), pulse=True),
-        P("H3", 52, 60, pulse=True),
-        P("H6", 12, 22, pulse=True,
+        HALL("H2", 37, 45, chapter=("04", "The hub", "Pitch bearings on a 100-tonne casting"), pulse=True),
+        HALL("H3", 51, 59, pulse=True),
+        HALL("H6", 52, 62, pulse=True,
           fact=(f"Hub ≈ {value('hub_mass')} t", ("hub_mass",), "derived"), fact_at=2.0),
         # ---------------------------------------------------------------- 5 marriage and test
-        P("M1", 15, 27, grade=GREY_ON_GREY,
-          chapter=("05", "Marriage and test", "Generator meets backend under a 500 t crane"),
-          fact=(f"{value('nacelle_mass')} t nacelle for the {value('rotor_diameter')} m rotor",
-                ("nacelle_mass", "rotor_diameter"), "Siemens Gamesa press release"), fact_at=6.0),
-        P("T1", 12, 20, grade=GREY_ON_GREY),
+        HALL("M1", 8, 13, grade=GREY_ON_GREY,        # M1A: on the mating axis, the generator comes in
+          chapter=("05", "Marriage and test", "An AGV brings the generator to the backend")),
+        HALL("M1", 13, 20, grade=GREY_ON_GREY, xfade=0.4,   # M1B: steep from the north, the gap closes to mated
+          fact=(f"{value('nacelle_mass')} t per finished nacelle",   # rotor size: SG 14-236 DD caption, offshore
+                ("nacelle_mass",), "Siemens Gamesa press release"), fact_at=1.0),
+        HALL("T1", 6, 14, trim=(10, 14), grade=GREY_ON_GREY),
         S("product/nacelle_exploded.png", 5.0, (1.0, 1.08)),
         # ---------------------------------------------------------------- 6 logistics
         S("site/ops_heavy_cranes.png", 5.0, (1.0, 1.1), chapter=("06", "Moving the heavy parts",
@@ -110,33 +156,38 @@ def shots():
           fact=(f"{value('haul_route_length')} m haul route from hall to ramp", ("haul_route_length",),
                 "OpenStreetMap"), fact_at=1.0),
         # ---------------------------------------------------------------- 7 load-out
-        P("L_loadout", 0, 9, grade=OUTDOOR, chapter=("07", "Load-out", "Onto the RoRo vessel through the bow")),
-        P("L_loadout", 9, 24, speed=1.5, grade=OUTDOOR),
-        P("L_loadout", 24, 30, grade=OUTDOOR),
-        P("L_loadout", 42, 52, grade=OUTDOOR,
-          fact=("Four nacelles per trip", ("loadout",), "press video, counted"), fact_at=2.0),
-        S("dock/dock_overview.png", 5.0, (1.0, 1.1)),
+        SHIP("L_loadout_0_31", 0, 9, chapter=("07", "Load-out", "Onto Rotra Vente through the bow")),
+        SHIP("L_loadout_0_31", 9, 24, speed=1.5),
+        SHIP("L_loadout_0_31", 24, 30),
+        SHIP("L_loadout_41_52", 1, 11,
+             fact=("Four nacelles per trip", ("loadout",), "press video, counted"), fact_at=2.0),
+        SHIP("rotra_name", 0, 7,
+             fact=("Rotra Vente · RoRo nacelle carrier · 141.5 × 21 m", (), "SOURCED · ship-technology.com"),
+             fact_at=1.0),
         # ---------------------------------------------------------------- 8 voyage
         S("offshore/voyage_map.png", 8.0, (1.3, 1.5), ((0.32, 0.5), (0.7, 0.47)),   # below the map's own route label
           chapter=("08", "To the wind farm", "Elbe, Kiel Canal, Baltic Sea"),
           fact=("≈ 390 km by RoRo, then 44 km by jack-up", (), "route ILLUSTRATIVE"), fact_at=2.0),
         # ---------------------------------------------------------------- 9 installation
-        P("OFF_install", 0, 10, grade=OUTDOOR, chapter=("09", "Installation at sea", "A jack-up vessel at turbine T07")),
-        P("OFF_install", 13, 27, speed=2.0, grade=OUTDOOR),
-        P("OFF_install", 29, 37, grade=OUTDOOR),
-        P("OFF_install", 38, 52, grade=OUTDOOR,
-          fact=(f"Lifting {value('nacelle_mass')} t onto the tower", ("nacelle_mass",), ""), fact_at=3.0),
-        P("OFF_install", 52, 68, grade=OUTDOOR),
-        P("OFF_install", 69, 74, grade=OUTDOOR),
+        SHIP("OFF_install_0_74", 0, 10, chapter=("09", "Installation at sea", "Norse Energi at Windanker turbine T07")),
+        SHIP("OFF_install_0_74", 13, 27, speed=2.0),
+        SHIP("OFF_install_0_74", 29, 37),
+        SHIP("OFF_install_0_74", 38, 52,
+             fact=(f"Lifting {value('nacelle_mass')} t onto the tower", ("nacelle_mass",), ""), fact_at=3.0),
+        SHIP("OFF_install_0_74", 52, 68),
+        SHIP("norse_name", 0, 6,
+             fact=("Norse Energi · DEME jack-up · 151 × 62 m · 3,200 t crane", (), "SOURCED · DEME"), fact_at=0.8),
+        SHIP("OFF_install_0_74", 69, 74,
+             fact=("Installed all 21 Windanker turbines, Jul–Sep 2026", (), "SOURCED · OE Resources"), fact_at=0.5),
         # ---------------------------------------------------------------- 10 rotor
-        P("OFF_rotor", 18, 30, grade=OUTDOOR, chapter=("10", "The rotor", "Hub first, then three blades")),
-        P("OFF_rotor", 36, 64, speed=2.5, grade=OUTDOOR),
-        P("OFF_rotor", 120, 130, grade=OUTDOOR,
-          fact=(f"{value('rotor_diameter')} m rotor, 14 MW", ("rotor_diameter", "product"), "press release"),
-          fact_at=2.0),
+        SHIP("OFF_rotor_17_31", 1, 13, chapter=("10", "The rotor", "Hub first, then three blades")),
+        SHIP("OFF_rotor_35_65", 1, 29, speed=2.5),
+        SHIP("OFF_rotor_119_131", 1, 11,
+             fact=("236 m rotor · SG 14-236 DD", (), "SOURCED · offshoreWIND.biz 2026"), fact_at=2.0),
         # ---------------------------------------------------------------- 11 service robots
         SVC("approach", "service/svc_overview.png",
-            chapter=("11", "Robots on the turbine", "A robot-only service visit")),
+            chapter=("11", "Robots on the turbine", "A robot-only service visit"),
+            fact=("Service operation vessel (generic SX175 type)", (), "ILLUSTRATIVE"), fact_at=3.5),
         SVC("drone_blade", "service/svc_inspection_drone.png",
             fact=("Inspection drone: RGB, thermal, LiDAR", (), "mission M1, ILLUSTRATIVE"), fact_at=1.0),
         SVC("contact_drone", "service/svc_blade_contact.png",

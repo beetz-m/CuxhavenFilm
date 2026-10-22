@@ -119,6 +119,17 @@ def watermark() -> Image.Image:
     return _shadowed(im, radius=8, alpha=90)
 
 
+def badge(text: str) -> Image.Image:
+    """Small top-left pill, e.g. 'TIME-LAPSE ×4' while a clip runs faster than real time."""
+    im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    f = font("plex:Mono-Medium", 24)
+    tw = d.textlength(text, font=f)
+    d.rounded_rectangle((80, 50, 80 + tw + 36, 92), radius=21, fill=(*ACCENT, 210))
+    d.text((98, 56), text, font=f, fill=(255, 255, 255, 255))
+    return _shadowed(im, radius=8, alpha=70)
+
+
 if __name__ == "__main__":
     out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "build", "titles_preview")
     os.makedirs(out, exist_ok=True)
@@ -127,4 +138,5 @@ if __name__ == "__main__":
     chapter("02", "The generator line", "Magnets, stator segments, 274 t of copper and steel").save(os.path.join(out, "chapter.png"))
     fact(f"{value('nacelle_mass')} t nacelle · {value('rotor_diameter')} m rotor", ("nacelle_mass", "rotor_diameter"),
          "press release").save(os.path.join(out, "fact.png"))
+    badge("TIME-LAPSE ×4").save(os.path.join(out, "badge.png"))
     print("previews in", out)

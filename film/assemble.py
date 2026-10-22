@@ -135,6 +135,11 @@ def overlays(shot):
         text, keys, src = shot["fact"]
         t = shot.get("fact_at", 1.2)
         out.append((*rgba(titles.fact(text, keys, src)), t, min(dur - 0.3, t + shot.get("fact_dur", 5.0))))
+    for mult, a, b in shot.get("timelapse", ()):        # source seconds where the twin itself runs as a time-lapse
+        sp = shot.get("speed", 1.0)
+        t0, t1 = max(0.0, (a - shot["in"]) / sp), min(dur, (b - shot["in"]) / sp)
+        if t1 - t0 > 0.8:
+            out.append((*rgba(titles.badge(f"TIME-LAPSE ×{mult * sp:g}")), t0, t1))
     if "card" not in shot:
         out.append((*rgba(WATERMARK), 0.0, dur + 1.0))
     return out

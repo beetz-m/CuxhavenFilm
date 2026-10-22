@@ -1,0 +1,17 @@
+{
+  "_note": "Shot windows (video seconds, 24 fps) re-picked on scenes/process_next/<sid>_events.json for the staged twin choreography (2026-10-21). old -> new; speed applies to the new window.",
+  "G2": {"old": [12, 24], "new": [10, 22], "why": "magnet modules aligned 10.5, seated 15.5, all inserted 25.0"},
+  "G3a": {"old": [24, 40], "new": [22, 40], "speed": 1.6, "why": "segments flown in from 28.0 (crane 80 t)"},
+  "G3b": {"old": [48, 56], "new": [50, 58], "why": "segment bolting 53.2 / 56.2"},
+  "G4": {"old": [39, 47], "new": [21, 39], "speed": 2.0, "why": "main bearing 28.6 and clamp ring 37.8 placed"},
+  "G5": {"old": [15, 27], "new": [14, 26], "why": "stator lifted in 21.7 after rotor set down 11.5"},
+  "B7": {"old": [0, 9], "new": [2, 11], "why": "wide establishing view of the backend line"},
+  "B2": {"old": [60, 72], "new": [66, 78], "why": "yaw drive bolting 70.4-78.8"},
+  "B4": {"old": [39, 48], "new": [19, 29], "why": "converter skid flown in, placed 28.0"},
+  "B5": {"old": [48, 56], "new": [27, 41], "speed": 1.75, "why": "cooler unit 29.2, pump skid 38.4"},
+  "H2": {"old": [36, 44], "new": [21, 37], "speed": 2.0, "why": "pitch bearings #1 27.4 and #2 36.6 flown in"},
+  "H3": {"old": [52, 60], "new": [44, 54], "why": "hub HPU flown in, placed 50.4"},
+  "H6": {"old": [12, 22], "new": [10, 22], "why": "blade bearing covers placed and bolted"},
+  "M1": {"old": [15, 27], "new": [6, 18], "why": "generator in on the 450 t AGV 9.6, backend mated by AGV creep 16.1 (no crane)"},
+  "T1": {"old": [12, 20], "new": [10, 20], "why": "weighing + end-of-line test 13.0"}
+}

@@ -1,0 +1,18 @@
+{
+ "people": [
+  {
+   "person": "construction_02",
+   "motion": "StandingDiscussion_LookingDown_M",
+   "pos": [
+    -97.23630923802985,
+    -7.675353346304138,
+    9.75
+   ],
+   "yaw": 54.12778467349223,
+   "offset_s": 24.300000000000004,
+   "shift_m": 1.0,
+   "posture": "stand"
+  }
+ ],
+ "vehicles": []
+}

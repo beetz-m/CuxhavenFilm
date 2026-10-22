@@ -47,6 +47,13 @@ from pxr import Usd, UsdGeom  # noqa: E402
 sys.path.insert(0, os.path.join(TWIN, "scripts"))
 import pose_fk as FK  # noqa: E402
 import render_lib as RL  # noqa: E402
+import ocean as OC  # noqa: E402
+import realism as RZ  # noqa: E402
+
+OLDSEA = "--oldsea" in ARGS                 # the previous look: flat sea, no realism / haze / post
+if not OLDSEA:
+    RZ.apply_materials()                     # realistic texture sets on the shared library (in memory), as the ships
+    __import__("product_looks").apply()      # film-side turbine surface detail (film/product_looks.py)
 
 if RT:
     import carb
@@ -61,6 +68,8 @@ if RT:
     _s.set("/rtx/shadows/enabled", True)
 else:
     RL.configure(SPP, SUB)
+if not OLDSEA:
+    RZ.settings(60.0)                        # filmic tone mapping, auto-exposure off, ISO 60: the ships' settings
 omni.usd.get_context().open_stage(os.path.join(TWIN, "offshore", "service_t07.usda"))
 for _ in range(120):
     app.update()
@@ -68,6 +77,14 @@ stage = omni.usd.get_context().get_stage()
 while omni.usd.get_context().get_stage_loading_status()[2] > 0:
     app.update()
 stage.SetEditTarget(stage.GetSessionLayer())
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import vessel_swap  # noqa: E402
+print("[anim] film vessels swapped in:", vessel_swap.swap(stage), flush=True)   # new SOV + gangway (session layer)
+for _ in range(30):
+    app.update()
+_inst = OC.install if os.environ.get("FILM_FOAM", "film") == "twin" else __import__("sea").install   # film/sea.py foam
+SEA = None if OLDSEA else _inst(stage, center=(0.0, 0.0))   # North Sea around T07 (scene origin), 2 km near field
+SEA_PATH = "/World/RenderOnly/NorthSea"
 info = json.load(open(os.path.join(TWIN, "data", "service_scene.json")))
 Mn = np.array(info["nacelle_matrix"])
 TP, TOP = 20.0, float(Mn[2, 3])
@@ -224,7 +241,8 @@ def shot_drone_blade(t):
 def shot_contact_drone(t):
     a = ease(min(t / 0.75, 1.0))                        # approach, then hold on the receptor
     move("/World/Drones/Contact", translated("/World/Drones/Contact", lerp((-2.5, -9.0, -3.0), (0, 0, 0), a)))
-    eye = lerp(tip + np.array([-12.0, -14.0, 5.5]), tip + np.array([-8.5, -9.5, 3.8]), ease(t))
+    # near tip height (from 5.5 m above, the drone read as hovering over the sea, not touching the blade)
+    eye = lerp(tip + np.array([-10.0, -12.0, 1.6]), tip + np.array([-6.0, -7.0, 0.9]), ease(t))
     return eye, lerp(contact0 + np.array([-1.2, -4.5, -1.5]), tip, ease(t)), 30
 
 
@@ -289,6 +307,9 @@ SHOTS = {  # name: (seconds, frame function, cutaway)
 }
 
 cam = RL.Camera(stage, RES, SUB, path="/World/RenderOnly/Cam", far=60000.0)
+DEP = None if OLDSEA else RZ.depth_annotator(cam.rp)
+T_OFF = {name: 20.0 * k for k, name in enumerate(["approach", "drone_blade", "contact_drone", "hoist_lift",
+                                                  "hoist_hatch", "nacelle_robots", "cargo_drone"])}
 times = []
 try:
     for name, (seconds, fn) in SHOTS.items():
@@ -299,6 +320,8 @@ try:
         frames = [0, n // 2, n - 1] if TEST else range(n)
         for i in frames:
             eye, tgt, focal = fn(i / (n - 1))
+            if SEA is not None:
+                SEA.update(stage, SEA_PATH, T_OFF.get(name, 0.0) + i / FPS)
             t0 = time.time()
             with open(os.devnull, "w") as dn:
                 stdout, sys.stdout = sys.stdout, dn
@@ -306,6 +329,10 @@ try:
                     cam.shot(os.path.join(OUT, name, f"{i:04d}.png"), eye, tgt, focal)
                 finally:
                     sys.stdout = stdout
+            if DEP is not None:                    # haze (depth of this frame), then lens / sensor, grain seed = frame
+                png = os.path.join(OUT, name, f"{i:04d}.png")
+                RZ.haze(png, np.asarray(DEP.get_data()), dst=png)
+                RZ.post(png, seed=i)
             times.append(time.time() - t0)
             if i % 24 == 0 or TEST:
                 print(f"[anim] {name} {i + 1}/{n} {times[-1]:.2f}s", flush=True)

@@ -1,0 +1,25 @@
+{
+ "people": [],
+ "vehicles": [
+  {
+   "kind": "stacker",
+   "base": [
+    -154.5,
+    1.29999999999999
+   ],
+   "d": [
+    0.0,
+    1.0
+   ],
+   "speed": 1.8,
+   "tmid": 16.0,
+   "heading": 90.0,
+   "lane": "LaneWestTransfer",
+   "direction": 1,
+   "visible": [
+    0.0,
+    9.0
+   ]
+  }
+ ]
+}

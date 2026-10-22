@@ -1,0 +1,5 @@
+{
+ "_note": "Per-shot overrides for film/render_hall_clips.py. vehicles: max number; G4 and B4 follow shots with a vehicle on the same lane, so they go without (about half of the shots have one).",
+ "G4_39_47": {"vehicles": 0},
+ "B4_39_48": {"vehicles": 0}
+}

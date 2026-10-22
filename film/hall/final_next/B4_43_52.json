@@ -1,0 +1,31 @@
+{
+ "people": [
+  {
+   "person": "construction_01",
+   "motion": "Market_Sales_SortOut_M",
+   "pos": [
+    55.916803712174456,
+    0.9876248088376676,
+    5.75
+   ],
+   "yaw": -53.637131415070755,
+   "offset_s": 14.100000000000001,
+   "shift_m": 1.0,
+   "posture": "crouch"
+  },
+  {
+   "person": "worker_overall",
+   "motion": "StandingDiscussion_LookingDown_M",
+   "pos": [
+    55.916803712174456,
+    -7.387624808837687,
+    5.75
+   ],
+   "yaw": 53.637131415070755,
+   "offset_s": 17.8,
+   "shift_m": 1.0,
+   "posture": "stand"
+  }
+ ],
+ "vehicles": []
+}

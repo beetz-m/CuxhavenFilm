@@ -1,0 +1,52 @@
+{
+ "people": [
+  {
+   "person": "construction_05",
+   "motion": "Market_Sales_SortOut_M",
+   "pos": [
+    103.275,
+    -0.21221235694369645,
+    2.95
+   ],
+   "yaw": -60.00000000000002,
+   "offset_s": 12.8,
+   "shift_m": 0.0,
+   "posture": "crouch"
+  },
+  {
+   "person": "construction_02",
+   "motion": "StandingDiscussion_LookingDown_M",
+   "pos": [
+    103.275,
+    -6.187787643056323,
+    2.95
+   ],
+   "yaw": 59.99999999999997,
+   "offset_s": 16.5,
+   "shift_m": 0.0,
+   "posture": "stand"
+  }
+ ],
+ "vehicles": [
+  {
+   "base": [
+    128.7,
+    10.639999999999986
+   ],
+   "d": [
+    1.0,
+    -0.0
+   ],
+   "speed": 1.8,
+   "tmid": 36.0,
+   "heading": -0.0,
+   "kind": "stacker",
+   "lane": "ReturnC",
+   "direction": -1,
+   "visible": [
+    5.0,
+    38.0
+   ]
+  }
+ ]
+}

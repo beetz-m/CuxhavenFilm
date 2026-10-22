@@ -1,0 +1,77 @@
+{
+ "_note": "Per-shot overrides for render_hall_clips.py --next (keys: <sid>_<in>_<out> of windows_next.json). cam: film-side camera offset (up / fwd along the view in m, pitch_down in deg) against foreground railings. vehicles: max number (about half of the shots get one).",
+ "G2_6_18": {
+  "vehicles": 0
+ },
+ "G3_90_98": {
+  "vehicles": 0
+ },
+ "G5_79_91": {
+  "vehicles": 0
+ },
+ "B4_43_52": {
+  "vehicles": 0,
+  "cam": {
+   "up": 3.0,
+   "fwd": 9.0,
+   "pitch_down": 4.0
+  }
+ },
+ "B5_53_61": {
+  "cam": {
+   "up": 3.0,
+   "fwd": 9.0,
+   "pitch_down": 4.0
+  }
+ },
+ "B2_30_42": {
+  "cam": {
+   "up": 2.0,
+   "fwd": 6.0,
+   "pitch_down": 3.0
+  }
+ },
+ "H2_37_45": {
+  "vehicles": 0
+ },
+ "M1_8_13": {
+  "vehicles": 0,
+  "cam": {
+   "eye": [
+    -60.0,
+    -3.2,
+    22.0
+   ],
+   "target": [
+    -97.0,
+    -3.2,
+    5.0
+   ],
+   "focal": 28.0,
+   "why": "M1A: on the mating axis from the open east end, above the backend (16.2 m), decks at both edges"
+  }
+ },
+ "M1_13_20": {
+  "vehicles": 0,
+  "cam": {
+   "eye": [
+    -90.0,
+    9.0,
+    26.0
+   ],
+   "target": [
+    -95.0,
+    -3.2,
+    5.0
+   ],
+   "focal": 22.0,
+   "why": "M1B: steep from the north above the deck tops, looking into the deck canyon at the joint"
+  }
+ },
+ "B7_0_9": {
+  "hide": [
+   "/World/Process/B7/Supply"
+  ],
+  "why": "the twin's three supply forklifts cross the establishing view at ~25-30 m/s before the first lift (36 s); parts in transit only"
+ }
+}

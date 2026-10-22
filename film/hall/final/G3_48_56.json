@@ -1,0 +1,25 @@
+{
+ "people": [],
+ "vehicles": [
+  {
+   "kind": "stacker",
+   "base": [
+    83.19999999999999,
+    -52.720000000000006
+   ],
+   "d": [
+    1.0,
+    -0.0
+   ],
+   "speed": 1.8,
+   "tmid": 52.0,
+   "heading": -0.0,
+   "lane": "ReturnA",
+   "direction": -1,
+   "visible": [
+    60.0,
+    74.0
+   ]
+  }
+ ]
+}

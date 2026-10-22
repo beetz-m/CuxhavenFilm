@@ -1,0 +1,27 @@
+{
+ "people": [
+  {
+   "person": "construction_05",
+   "motion": "Market_Sales_SortOut_M",
+   "pos": [
+    55.323906574008994,
+    1.7929030114206057,
+    9.25
+   ],
+   "yaw": -53.637131415070755,
+   "offset_s": 12.8
+  },
+  {
+   "person": "construction_02",
+   "motion": "StandingDiscussion_LookingDown_M",
+   "pos": [
+    64.22514460497028,
+    -8.127338435775087,
+    9.25
+   ],
+   "yaw": 136.68019440492745,
+   "offset_s": 16.5
+  }
+ ],
+ "vehicles": []
+}
